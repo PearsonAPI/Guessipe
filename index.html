@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <meta content='width=device-width, initial-scale=1' name='viewport' />
+    <title>Over the Air 2012: Pearson APIs for content</title>
+    <link href='css/jquerymobile.css' rel='stylesheet' />
+
+    <script src='script/jquery.js' type='text/javascript'></script>
+    <script src='script/jquerymobile.js' type='text/javascript'></script>
+    <script src='script/ICanHaz.js' type='text/javascript'></script>
+    <script src='script/pearson.js' type='text/javascript'></script>
+
+    <!-- Templates   -->
+    <script id="cuisines_tmpl" type="text/html">
+      <ul data-role='listview'>
+      {{#cuisines}}
+        <li>
+          <a href='#recipes?id={{id}}'>
+            {{name}}
+            <span class='ui-li-count'>{{recipe_count}}</span>
+          </a>
+        </li>
+        {{/cuisines}}
+      </ul>
+    </script>
+ 
+     <script id="recipes_tmpl" type="text/html">
+      <ul data-role='listview'>
+        {{#recipes}}
+        <li>
+          <a href='#recipe?id={{id}}'>
+            <img src='{{thumb}}'/> {{name}}
+          </a>
+        </li>
+        {{/recipes}}
+      </ul>
+    </script>
+
+    <script id="recipe_tmpl" type="text/html">
+        {{#recipe}}
+          <h2>Guess ingredients for {{name}}</h2>
+          <img src="{{image}}"/>
+          <form id="#ingredients">
+          <fieldset data-role='controlgroup' data-mini='true'>
+            {{#guesses}}
+              <input type="checkbox" id="{{id}}" />
+              <label for="{{id}}">{{name}}</label>
+            {{/guesses}}
+          </fieldset>
+          </form>
+        {{/recipe}}
+        <a href="#result" data-role='button'>Guess !</a>
+    </script>
+
+    <script id="result_tmpl" type="text/html">
+        <h2>Guess ingredients for {{recipe.name}}</h2>
+        <img src="{{recipe.image}}"/>
+      
+        <p>You have scored {{score}} points !</p>
+        <p>You got {{right}} correct ingredients</p>
+        <p>You got {{wrong}} incorrect ingredients<p>
+
+        <ul data-role="listview">
+        {{#recipe.ingredients}}
+          <li>{{name}}</li>
+        {{/recipe.ingredients}}
+        </ul>
+        {{/recipe}}
+        <a href="#cuisines" data-role='button'>Go again !</a>
+    </script>
+  </head>
+  <body>
+
+    <!-- Pages -->
+    <!-- Main page -->
+    <div data-role='page' id='welcome'/>
+      <div data-role='header' data-position='fixed'>
+        <h1>Guessipes ?</h1>
+      </div>
+      <div id="content" data-role='content'>
+        <p>Welcome to Guessipe</p>
+        <a href="#cuisines" data-role='button' data-inline='true'>Play !</a>
+      </div>
+    </div>
+
+    <!-- Cuisine selection page -->
+    <div data-role='page' id='cuisines'>
+      <div data-role='header' data-position='fixed'>
+        <h1>Guessipes ?</h1>
+      </div>
+      <div id="content" data-role='content'>
+      </div>
+    </div>
+
+    <!-- Recipe selection page -->
+    <div data-role='page' id='recipes' data-add-back-btn="true">
+      <div data-role='header' data-position='fixed'>
+        <a href="#" data-rel='back' data-role='button'>back</a>
+        <h1>Guessipes ?</h1>
+      </div>
+      <div id="content" data-role='content'>
+      </div>
+    </div>
+
+    <!-- Recipe  page -->
+    <div data-role='page' id='recipe' data-add-back-btn="true">
+      <div data-role='header' data-position='fixed'>
+        <a href="#" data-rel='back' data-role='button'>back</a>
+        <h1>Guessipes ?</h1>
+      </div>
+      <div id="content" data-role='content'>
+      </div>
+    </div>
+
+    <!-- Results page -->
+    <div data-role='page' id='result' data-add-back-btn="true">
+      <div data-role='header' data-position='fixed'>
+        <a href="#" data-rel='back' data-role='button'>back</a>
+        <h1>Guessipes ?</h1>
+      </div>
+      <div id="content" data-role='content'>
+      </div>
+    </div>
+  </body>
+
+  <script type="text/javascript">
+    // Add your API key here
+    pkm.apikey = ""
+    pkm.url = "http://api.pearson.com/kitchen_manager/v1/"
+    pkm.debug=true // set 'true' to put console messages for URLs
+
+    // Load ingredients. Store in ingredients so can be accessed elsewhere
+    var ingredients
+    $(document).bind('pageinit',function (event) {
+        if (ingredients == undefined) {
+        pkm.ingredients({limit:2000}, function(data) {
+          console.log("Loaded "+data.count+" ingredients")
+          ingredients = data.results;
+        })
+      }
+    });
+    
+    // Load cuisines. Use 'pageinit' as we only need to load them once
+    $('#cuisines').bind('pageinit',function(event) {
+      pkm.cuisines( {limit:200 }, function(data) {
+        var cuisines = data.results
+        var html = ich.cuisines_tmpl({cuisines:cuisines})
+        $('#cuisines #content').html(html).trigger('create')
+      })
+    });
+
+    // Load recipes. Use pagebeforeshow to load each recipe 
+    var cuisine
+    $('#recipes').bind('pagebeforeshow',function(event) {
+      if (cuisine != $.urlParam('id')) {
+        cuisine = $.urlParam('id')
+        pkm.cuisine_recipes( cuisine, {limit:50 }, function(data) {
+          var recipes = data.recipes
+          var html = ich.recipes_tmpl({recipes:recipes})
+          $('#recipes #content').html(html).trigger('create')
+       });
+      }
+    });
+
+    // Load in some random indgredients, and then sort so you don't know which
+    // is right and which is wrong
+    var recipe
+    $('#recipe').bind('pagebeforeshow',function(event) {
+      var id = $.urlParam('id')
+        pkm.recipe( id, { }, function(data) {
+          recipe = data
+          var guesses = recipe.ingredients.slice();
+          for(var i=0;i<pkm.random(3);i++) {
+            var random_ingredient = ingredients[pkm.random(ingredients.length)]
+            guesses.push({name:random_ingredient.name, id: random_ingredient.id})
+          }
+          guesses.sort(function(a,b) { if(a.name < b.name) return -1; if (a.name > b.name) return 1; return 0; })
+          var html = ich.recipe_tmpl({recipe:recipe, guesses: guesses})
+          $('#recipe #content').html(html).trigger('create')
+        });
+    });
+
+    // Results page - caluclate the users score !!
+    $('#result').bind('pagebeforeshow', function(event) {
+      var score = 0;
+      var right = 0;
+      var wrong = 0;
+      var guesses = $('#recipe input[type=checkbox]:checked')
+      for(var i=0;i<guesses.length;i++) {
+        for (var j=0;j<recipe.ingredients.length;j++) {
+          if (recipe.ingredients[j].id == guesses[i].id) {
+            right += 1;
+            continue;
+          }
+        }
+      }
+      wrong = guesses.length - right;
+      score = (right) - (wrong * 3)
+      html = ich.result_tmpl({recipe: recipe, right: right, wrong: wrong,score: score})
+      $(this).html(html).trigger('create')
+    });
+  </script>
+</html>
