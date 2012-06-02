@@ -8,8 +8,8 @@ as a single page HTML app, live coded.
 The file pearson.js contains a simple helper class for accessing the APIs. The 
 following parameters need to be set before using it:
 
-  pkm.apikey = 'your sandbox or production API key'
-  pkm.url = 'http://api.pearson.com/kitchen_manager/v1'
+  ``pkm.apikey = 'your sandbox or production API key'``
+  ``pkm.url = 'http://api.pearson.com/kitchen_manager/v1'``
 
 Note that in the future, there may be newer versions of the API, so use the
 appropriate version !
